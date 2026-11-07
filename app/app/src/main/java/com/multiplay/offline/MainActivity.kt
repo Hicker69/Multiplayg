@@ -10,6 +10,10 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.view.View
 import android.widget.*
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -19,26 +23,33 @@ import kotlin.concurrent.thread
 
 class MainActivity : Activity() {
     private val adapter: BluetoothAdapter? get() = BluetoothAdapter.getDefaultAdapter()
-    private val uuid: UUID = UUID.fromString("8b7a9d10-1c2e-4f30-9a50-4d554c544950")
+    private val uuid = UUID.fromString("8b7a9d10-1c2e-4f30-9a50-4d554c544950")
     private var socket: BluetoothSocket? = null
     private var writer: PrintWriter? = null
     private var reader: BufferedReader? = null
+
     private var host = false
-    private var localWords = listOf("", "")
-    private var remoteWords = listOf("", "")
+    private var localWord = ""
+    private var remoteWord = ""
     private var guessed = mutableSetOf<Char>()
     private var wrong = 0
     private var turn = 0
     private var mySide = 0
     private var round = 1
     private var score = intArrayOf(0, 0)
+
     private lateinit var root: LinearLayout
     private lateinit var status: TextView
     private lateinit var keyboard: GridLayout
     private lateinit var wordOne: EditText
-    private lateinit var wordTwo: EditText
     private lateinit var nameInput: EditText
+
     private var playerName = "Player"
+
+    private val bg = 0xFF0B1020.toInt()
+    private val panel = 0xFF151F35.toInt()
+    private val accent = 0xFF647BFF.toInt()
+    private val muted = 0xFF9AA8C7.toInt()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,33 +59,74 @@ class MainActivity : Activity() {
 
     private fun requestBtPermissions() {
         if (Build.VERSION.SDK_INT >= 31) {
-            val p = arrayOf(
+            val permissions = arrayOf(
                 Manifest.permission.BLUETOOTH_CONNECT,
                 Manifest.permission.BLUETOOTH_SCAN
             )
-            val missing = p.filter {
+
+            val missing = permissions.filter {
                 checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED
             }
+
             if (missing.isNotEmpty()) {
                 requestPermissions(missing.toTypedArray(), 7)
             }
         }
     }
 
-    private fun text(s: String, size: Float = 16f): TextView =
+    private fun rounded(
+        color: Int,
+        radius: Float = 18f
+    ): GradientDrawable =
+        GradientDrawable().apply {
+            setColor(color)
+            cornerRadius = radius
+        }
+
+    private fun text(
+        s: String,
+        size: Float = 16f
+    ): TextView =
         TextView(this).apply {
             text = s
             textSize = size
-            setTextColor(0xFFF8FAFC.toInt())
+            setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
-            setPadding(12, 10, 12, 10)
+            typeface = Typeface.create(
+                "sans-serif-medium",
+                Typeface.NORMAL
+            )
+            setPadding(14, 12, 14, 12)
         }
 
-    private fun button(s: String, action: () -> Unit): Button =
+    private fun button(
+        s: String,
+        action: () -> Unit
+    ): Button =
         Button(this).apply {
             text = s
             isAllCaps = false
-            setOnClickListener { action() }
+            textSize = 15f
+            setTextColor(Color.WHITE)
+            background = rounded(accent, 16f)
+            typeface = Typeface.create(
+                "sans-serif-medium",
+                Typeface.BOLD
+            )
+            elevation = 3f
+            setPadding(16, 8, 16, 8)
+
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+
+            lp.setMargins(0, 8, 0, 8)
+            layoutParams = lp
+
+            setOnClickListener {
+                action()
+            }
         }
 
     private fun edit(hintText: String): EditText =
@@ -82,55 +134,96 @@ class MainActivity : Activity() {
             hint = hintText
             setSingleLine(true)
             textSize = 17f
-            setPadding(14, 8, 14, 8)
+            setTextColor(Color.WHITE)
+            setHintTextColor(muted)
+            background = rounded(panel, 14f)
+            setPadding(18, 14, 18, 14)
         }
+
+    private fun gap(height: Int = 10) {
+        root.addView(
+            View(this),
+            LinearLayout.LayoutParams(1, height)
+        )
+    }
 
     private fun page(title: String) {
         root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(18, 18, 18, 18)
-            setBackgroundColor(0xFF111827.toInt())
+            setPadding(22, 24, 22, 24)
+
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(
+                    bg,
+                    0xFF17264A.toInt(),
+                    bg
+                )
+            )
         }
+
         val scroll = ScrollView(this).apply {
+            setBackgroundColor(bg)
             addView(root)
         }
+
         setContentView(scroll)
-        root.addView(text(title, 28f))
+
+        root.addView(
+            text("MULTIPLAY", 13f).apply {
+                setTextColor(0xFF8FA3FF.toInt())
+                letterSpacing = 0.18f
+            }
+        )
+
+        root.addView(text(title, 27f))
+        gap(8)
     }
 
     private fun buildHome() {
         page("MULTIPLAY")
-        root.addView(text("OFFLINE • BLUETOOTH • TWO PLAYERS", 13f))
+
+        root.addView(
+            text("OFFLINE • BLUETOOTH • TWO PLAYERS", 13f)
+        )
+
         nameInput = edit("Your player name")
         root.addView(nameInput)
 
-        root.addView(button("Create game (Host)") {
+        gap(12)
+
+        root.addView(button("CREATE GAME  •  HOST") {
             startHost()
         })
 
-        root.addView(button("Join paired phone (Guest)") {
+        root.addView(button("JOIN GAME  •  GUEST") {
             showPairedDevices()
         })
 
-        root.addView(button("How to connect") {
-            page("CONNECT TWO PHONES")
-            root.addView(text(
+        gap(18)
+
+        root.addView(text("HOW TO PLAY", 18f))
+
+        root.addView(
+            text(
                 "1. Turn Bluetooth on on both phones.\n" +
                 "2. Pair the phones in Android Bluetooth Settings.\n" +
-                "3. On phone 1 tap Create game.\n" +
-                "4. On phone 2 tap Join paired phone and select phone 1.\n" +
-                "5. Both players enter two secret words and start."
-            ))
-            root.addView(button("Back") {
-                buildHome()
-            })
-        })
+                "3. Player 1 creates a game.\n" +
+                "4. Player 2 joins the paired phone.\n" +
+                "5. Each player selects ONE secret word.",
+                14f
+            )
+        )
 
-        root.addView(text(
-            "No internet or account required. Pair the phones in Android Settings first.",
-            13f
-        ))
+        gap(12)
+
+        root.addView(
+            text(
+                "No internet or account required.",
+                13f
+            )
+        )
     }
 
     private fun startHost() {
@@ -138,15 +231,19 @@ class MainActivity : Activity() {
 
         host = true
         mySide = 0
-        playerName = nameInput.text.toString().ifBlank { "Host" }
+
+        playerName = nameInput.text.toString()
+            .ifBlank { "Host" }
 
         page("Waiting for player 2…")
+
         status = text(
             "Keep this screen open. The other phone should join from its paired-device list."
         )
+
         root.addView(status)
 
-        root.addView(button("Cancel") {
+        root.addView(button("CANCEL") {
             closeConnection()
             buildHome()
         })
@@ -154,15 +251,20 @@ class MainActivity : Activity() {
         thread {
             try {
                 val server: BluetoothServerSocket =
-                    adapter!!.listenUsingRfcommWithServiceRecord("MULTIPLAY", uuid)
+                    adapter!!.listenUsingRfcommWithServiceRecord(
+                        "MULTIPLAY",
+                        uuid
+                    )
 
-                val s = server.accept()
+                val connection = server.accept()
                 server.close()
-                attach(s)
+
+                attach(connection)
 
                 runOnUiThread {
                     showWordEntry()
                 }
+
             } catch (e: Exception) {
                 runOnUiThread {
                     status.text = "Connection failed: ${e.message}"
@@ -176,7 +278,9 @@ class MainActivity : Activity() {
 
         host = false
         mySide = 1
-        playerName = nameInput.text.toString().ifBlank { "Guest" }
+
+        playerName = nameInput.text.toString()
+            .ifBlank { "Guest" }
 
         val devices = try {
             adapter!!.bondedDevices.toList()
@@ -187,37 +291,49 @@ class MainActivity : Activity() {
         page("Choose paired phone")
 
         if (devices.isEmpty()) {
-            root.addView(text(
-                "No paired devices found. Pair both phones in Android Bluetooth Settings first."
-            ))
+            root.addView(
+                text(
+                    "No paired devices found. Pair both phones in Android Bluetooth Settings first."
+                )
+            )
         }
 
-        devices.forEach { d ->
-            root.addView(button(d.name ?: d.address) {
-                connect(d)
-            })
+        devices.forEach { device ->
+            root.addView(
+                button(device.name ?: device.address) {
+                    connect(device)
+                }
+            )
         }
 
-        root.addView(button("Back") {
+        root.addView(button("BACK") {
             buildHome()
         })
     }
 
-    private fun connect(d: BluetoothDevice) {
+    private fun connect(device: BluetoothDevice) {
         page("Connecting…")
-        status = text("Connecting to ${d.name ?: "phone"}")
+
+        status = text(
+            "Connecting to ${device.name ?: "phone"}"
+        )
+
         root.addView(status)
 
         thread {
             try {
                 adapter?.cancelDiscovery()
-                val s = d.createRfcommSocketToServiceRecord(uuid)
-                s.connect()
-                attach(s)
+
+                val connection =
+                    device.createRfcommSocketToServiceRecord(uuid)
+
+                connection.connect()
+                attach(connection)
 
                 runOnUiThread {
                     showWordEntry()
                 }
+
             } catch (e: Exception) {
                 runOnUiThread {
                     status.text = "Could not connect: ${e.message}"
@@ -232,8 +348,11 @@ class MainActivity : Activity() {
             return false
         }
 
-        if (Build.VERSION.SDK_INT >= 31 &&
-            checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED
+        if (
+            Build.VERSION.SDK_INT >= 31 &&
+            checkSelfPermission(
+                Manifest.permission.BLUETOOTH_CONNECT
+            ) != PackageManager.PERMISSION_GRANTED
         ) {
             requestBtPermissions()
             toast("Allow Bluetooth permissions, then try again.")
@@ -248,19 +367,23 @@ class MainActivity : Activity() {
         return true
     }
 
-    private fun attach(s: BluetoothSocket) {
-        socket = s
-        writer = PrintWriter(s.outputStream, true)
-        reader = BufferedReader(InputStreamReader(s.inputStream))
+    private fun attach(connection: BluetoothSocket) {
+        socket = connection
+        writer = PrintWriter(connection.outputStream, true)
+        reader = BufferedReader(
+            InputStreamReader(connection.inputStream)
+        )
 
         thread {
             try {
                 while (true) {
                     val line = reader?.readLine() ?: break
+
                     runOnUiThread {
                         receive(line)
                     }
                 }
+
             } catch (_: Exception) {
                 runOnUiThread {
                     toast("Bluetooth disconnected.")
@@ -278,53 +401,67 @@ class MainActivity : Activity() {
     }
 
     private fun showWordEntry() {
-        page("Set your secret words")
-        root.addView(text(
-            "Your opponent will guess these. Keep them secret!"
-        ))
+        page("Choose your secret word")
 
-        wordOne = edit("Secret word 1 (3–12 letters)")
-        wordTwo = edit("Secret word 2 (3–12 letters)")
+        root.addView(
+            text(
+                "Pick ONE word. Your opponent will try to guess it.",
+                15f
+            )
+        )
 
+        gap(12)
+
+        wordOne = edit("Secret word (3–12 letters)")
         root.addView(wordOne)
-        root.addView(wordTwo)
 
-        root.addView(button("Ready / Send words") {
-            val a = wordOne.text.toString().trim().uppercase()
-            val b = wordTwo.text.toString().trim().uppercase()
+        gap(8)
 
-            if (!a.matches(Regex("[A-Z]{3,12}")) ||
-                !b.matches(Regex("[A-Z]{3,12}"))
-            ) {
-                toast("Enter two words using 3–12 letters each.")
+        root.addView(button("SEND SECRET WORD") {
+            val chosen = wordOne.text.toString()
+                .trim()
+                .uppercase()
+
+            if (!chosen.matches(Regex("[A-Z]{3,12}"))) {
+                toast("Enter one word using 3–12 letters.")
                 return@button
             }
 
-            localWords = listOf(a, b)
-            send("WORDS|$a|$b")
+            localWord = chosen
 
-            status = text("Words sent. Waiting for the other player…")
+            send("WORD|$chosen")
+
+            status = text(
+                "Secret word sent. Waiting for your opponent…",
+                15f
+            )
+
             root.addView(status)
 
-            if (remoteWords.all { it.isNotBlank() }) {
+            if (remoteWord.isNotBlank()) {
                 startRound()
             }
         })
     }
 
     private fun receive(line: String) {
-        val p = line.split("|")
+        val parts = line.split("|")
 
-        when (p.firstOrNull()) {
-            "WORDS" -> if (p.size == 3) {
-                remoteWords = listOf(p[1], p[2])
-                if (localWords.all { it.isNotBlank() }) {
+        when (parts.firstOrNull()) {
+
+            "WORD" -> if (parts.size == 2) {
+                remoteWord = parts[1]
+
+                if (localWord.isNotBlank()) {
                     startRound()
                 }
             }
 
-            "GUESS" -> if (p.size == 2 && p[1].length == 1) {
-                applyIncomingGuess(p[1][0])
+            "GUESS" -> if (
+                parts.size == 2 &&
+                parts[1].length == 1
+            ) {
+                applyIncomingGuess(parts[1][0])
             }
 
             "WIN" -> showOpponentWinner()
@@ -347,12 +484,19 @@ class MainActivity : Activity() {
         showBoard()
     }
 
-    private fun applyGuess(c: Char, transmit: Boolean) {
-        if (c !in 'A'..'Z' || c in guessed || turn != mySide) return
+    private fun applyGuess(
+        c: Char,
+        transmit: Boolean
+    ) {
+        if (
+            c !in 'A'..'Z' ||
+            c in guessed ||
+            turn != mySide
+        ) return
 
         guessed.add(c)
 
-        if (c !in remoteWords.joinToString("")) {
+        if (c !in remoteWord) {
             wrong++
         }
 
@@ -360,10 +504,7 @@ class MainActivity : Activity() {
             send("GUESS|$c")
         }
 
-        if (remoteWords.all { w ->
-                w.all { it in guessed }
-            }
-        ) {
+        if (remoteWord.all { it in guessed }) {
             score[mySide]++
             send("WIN")
             showWinner()
@@ -374,18 +515,18 @@ class MainActivity : Activity() {
     }
 
     private fun applyIncomingGuess(c: Char) {
-        if (c !in 'A'..'Z' || c in guessed) return
+        if (
+            c !in 'A'..'Z' ||
+            c in guessed
+        ) return
 
         guessed.add(c)
 
-        if (c !in remoteWords.joinToString("")) {
+        if (c !in remoteWord) {
             wrong++
         }
 
-        if (remoteWords.all { w ->
-                w.all { it in guessed }
-            }
-        ) {
+        if (remoteWord.all { it in guessed }) {
             score[1 - mySide]++
             showOpponentWinner()
         } else {
@@ -395,13 +536,16 @@ class MainActivity : Activity() {
     }
 
     private fun showOpponentWinner() {
-        page("OPPONENT WINS THIS ROUND")
-        root.addView(text(
-            "Score: ${score[0]} — ${score[1]}",
-            22f
-        ))
+        page("OPPONENT WINS")
 
-        root.addView(button("Next round") {
+        root.addView(
+            text(
+                "Score: ${score[0]} — ${score[1]}",
+                22f
+            )
+        )
+
+        root.addView(button("NEXT ROUND") {
             guessed.clear()
             wrong = 0
             turn = 0
@@ -414,7 +558,7 @@ class MainActivity : Activity() {
             showBoard()
         })
 
-        root.addView(button("Home") {
+        root.addView(button("HOME") {
             closeConnection()
             buildHome()
         })
@@ -423,46 +567,60 @@ class MainActivity : Activity() {
     private fun showBoard() {
         page("WORD GUESS • ROUND $round")
 
-        root.addView(text(
-            "You: ${if (mySide == 0) "HOST" else "GUEST"}     " +
-            "Score  ${score[0]} — ${score[1]}"
-        ))
+        root.addView(
+            text(
+                "You: ${if (mySide == 0) "HOST" else "GUEST"}\n" +
+                "Score  ${score[0]} — ${score[1]}"
+            )
+        )
 
-        root.addView(text(
-            if (turn == mySide) {
-                "YOUR TURN — choose one letter"
-            } else {
-                "OPPONENT'S TURN"
+        gap(8)
+
+        root.addView(
+            text(
+                if (turn == mySide) {
+                    "YOUR TURN — CHOOSE A LETTER"
+                } else {
+                    "OPPONENT'S TURN"
+                },
+                17f
+            )
+        )
+
+        gap(10)
+
+        root.addView(
+            text(
+                "OPPONENT'S SECRET WORD\n${mask(remoteWord)}",
+                25f
+            ).apply {
+                background = rounded(panel, 18f)
+                setPadding(18, 24, 18, 24)
             }
-        ))
+        )
 
-        root.addView(text(
-            "Word 1\n${mask(remoteWords.getOrElse(0) { "" })}",
-            24f
-        ))
+        gap(8)
 
-        root.addView(text(
-            "Word 2\n${mask(remoteWords.getOrElse(1) { "" })}",
-            24f
-        ))
-
-        root.addView(text("Wrong guesses: $wrong / 6"))
+        root.addView(
+            text("Wrong guesses: $wrong / 6")
+        )
 
         keyboard = GridLayout(this).apply {
             columnCount = 7
         }
 
         ('A'..'Z').forEach { c ->
-            val b = Button(this).apply {
+            val keyButton = Button(this).apply {
                 text = if (c in guessed) "·" else c.toString()
                 isEnabled = c !in guessed && turn == mySide
+
                 setOnClickListener {
                     applyGuess(c, true)
                 }
             }
 
             keyboard.addView(
-                b,
+                keyButton,
                 GridLayout.LayoutParams().apply {
                     width = 0
                     columnSpec = GridLayout.spec(
@@ -475,35 +633,41 @@ class MainActivity : Activity() {
 
         root.addView(keyboard)
 
-        root.addView(button("Disconnect / Home") {
+        gap(12)
+
+        root.addView(button("DISCONNECT / HOME") {
             closeConnection()
             buildHome()
         })
     }
 
-    private fun mask(w: String): String =
-        w.map {
+    private fun mask(word: String): String =
+        word.map {
             if (it in guessed) it else '_'
         }.joinToString(" ")
 
     private fun showWinner() {
-        page("YOU WIN THIS ROUND!")
+        page("YOU WIN!")
 
-        root.addView(text(
-            "Both words guessed. Score: ${score[0]} — ${score[1]}",
-            22f
-        ))
+        root.addView(
+            text(
+                "Secret word guessed!\n" +
+                "Score: ${score[0]} — ${score[1]}",
+                22f
+            )
+        )
 
-        root.addView(button("Next round") {
+        root.addView(button("NEXT ROUND") {
             guessed.clear()
             wrong = 0
             turn = 0
             round++
+
             send("RESET")
             showBoard()
         })
 
-        root.addView(button("Home") {
+        root.addView(button("HOME") {
             closeConnection()
             buildHome()
         })
@@ -520,7 +684,7 @@ class MainActivity : Activity() {
         reader = null
     }
 
-    private fun toast(s: String) =
+    private fun toast(s: String) {
         runOnUiThread {
             Toast.makeText(
                 this,
@@ -528,6 +692,7 @@ class MainActivity : Activity() {
                 Toast.LENGTH_LONG
             ).show()
         }
+    }
 
     override fun onDestroy() {
         closeConnection()
