@@ -10,7 +10,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
-import android.view.View
 import android.widget.*
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -35,14 +34,13 @@ class MainActivity : Activity() {
     private var score = intArrayOf(0, 0)
     private lateinit var root: LinearLayout
     private lateinit var status: TextView
-    private lateinit var board: TextView
     private lateinit var keyboard: GridLayout
     private lateinit var wordOne: EditText
     private lateinit var wordTwo: EditText
     private lateinit var nameInput: EditText
     private var playerName = "Player"
 
-    override fun onCreate(savedInstanceState: Bundle?) {
+     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         buildHome()
         requestBtPermissions()
@@ -98,9 +96,9 @@ class MainActivity : Activity() {
             addView(root)
         }
         setContentView(scroll)
-        root.addView(text(title, 28f))
+ root.addView(text(title, 28f))
     }
-
+    
     private fun buildHome() {
         page("MULTIPLAY")
         root.addView(text("OFFLINE • BLUETOOTH • TWO PLAYERS", 13f))
