@@ -40,7 +40,7 @@ class MainActivity : Activity() {
     private lateinit var nameInput: EditText
     private var playerName = "Player"
 
-     override fun onCreate(savedInstanceState: Bundle?) {
+    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         buildHome()
         requestBtPermissions()
@@ -96,9 +96,9 @@ class MainActivity : Activity() {
             addView(root)
         }
         setContentView(scroll)
- root.addView(text(title, 28f))
+        root.addView(text(title, 28f))
     }
-    
+
     private fun buildHome() {
         page("MULTIPLAY")
         root.addView(text("OFFLINE • BLUETOOTH • TWO PLAYERS", 13f))
