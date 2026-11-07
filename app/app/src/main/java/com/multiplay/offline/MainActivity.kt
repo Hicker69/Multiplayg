@@ -22,8 +22,14 @@ import java.util.UUID
 import kotlin.concurrent.thread
 
 class MainActivity : Activity() {
-    private val adapter: BluetoothAdapter? get() = BluetoothAdapter.getDefaultAdapter()
-    private val uuid = UUID.fromString("8b7a9d10-1c2e-4f30-9a50-4d554c544950")
+
+    private val adapter: BluetoothAdapter?
+        get() = BluetoothAdapter.getDefaultAdapter()
+
+    private val uuid = UUID.fromString(
+        "8b7a9d10-1c2e-4f30-9a50-4d554c544950"
+    )
+
     private var socket: BluetoothSocket? = null
     private var writer: PrintWriter? = null
     private var reader: BufferedReader? = null
@@ -77,17 +83,18 @@ class MainActivity : Activity() {
     private fun rounded(
         color: Int,
         radius: Float = 18f
-    ): GradientDrawable =
-        GradientDrawable().apply {
+    ): GradientDrawable {
+        return GradientDrawable().apply {
             setColor(color)
             cornerRadius = radius
         }
+    }
 
     private fun text(
         s: String,
         size: Float = 16f
-    ): TextView =
-        TextView(this).apply {
+    ): TextView {
+        return TextView(this).apply {
             text = s
             textSize = size
             setTextColor(Color.WHITE)
@@ -98,12 +105,13 @@ class MainActivity : Activity() {
             )
             setPadding(14, 12, 14, 12)
         }
+    }
 
     private fun button(
         s: String,
         action: () -> Unit
-    ): Button =
-        Button(this).apply {
+    ): Button {
+        return Button(this).apply {
             text = s
             isAllCaps = false
             textSize = 15f
@@ -124,13 +132,12 @@ class MainActivity : Activity() {
             lp.setMargins(0, 8, 0, 8)
             layoutParams = lp
 
-            setOnClickListener {
-                action()
-            }
+            setOnClickListener { action() }
         }
+    }
 
-    private fun edit(hintText: String): EditText =
-        EditText(this).apply {
+    private fun edit(hintText: String): EditText {
+        return EditText(this).apply {
             hint = hintText
             setSingleLine(true)
             textSize = 17f
@@ -139,6 +146,7 @@ class MainActivity : Activity() {
             background = rounded(panel, 14f)
             setPadding(18, 14, 18, 14)
         }
+    }
 
     private fun gap(height: Int = 10) {
         root.addView(
@@ -155,11 +163,7 @@ class MainActivity : Activity() {
 
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                intArrayOf(
-                    bg,
-                    0xFF17264A.toInt(),
-                    bg
-                )
+                intArrayOf(bg, 0xFF17264A.toInt(), bg)
             )
         }
 
@@ -191,38 +195,34 @@ class MainActivity : Activity() {
         nameInput = edit("Your player name")
         root.addView(nameInput)
 
-        gap(12)
-
-        root.addView(button("CREATE GAME  •  HOST") {
+        root.addView(button("CREATE GAME • HOST") {
             startHost()
         })
 
-        root.addView(button("JOIN GAME  •  GUEST") {
+        root.addView(button("JOIN GAME • GUEST") {
             showPairedDevices()
         })
 
-        gap(18)
+        root.addView(button("HOW TO CONNECT") {
+            page("CONNECT TWO PHONES")
 
-        root.addView(text("HOW TO PLAY", 18f))
+            root.addView(
+                text(
+                    "1. Turn Bluetooth on on both phones.\n" +
+                    "2. Pair the phones in Android Settings.\n" +
+                    "3. Player 1 taps Create Game.\n" +
+                    "4. Player 2 joins the paired phone.\n" +
+                    "5. Each player selects ONE secret word."
+                )
+            )
+
+            root.addView(button("BACK") {
+                buildHome()
+            })
+        })
 
         root.addView(
-            text(
-                "1. Turn Bluetooth on on both phones.\n" +
-                "2. Pair the phones in Android Bluetooth Settings.\n" +
-                "3. Player 1 creates a game.\n" +
-                "4. Player 2 joins the paired phone.\n" +
-                "5. Each player selects ONE secret word.",
-                14f
-            )
-        )
-
-        gap(12)
-
-        root.addView(
-            text(
-                "No internet or account required.",
-                13f
-            )
+            text("No internet or account required.", 13f)
         )
     }
 
@@ -238,7 +238,7 @@ class MainActivity : Activity() {
         page("Waiting for player 2…")
 
         status = text(
-            "Keep this screen open. The other phone should join from its paired-device list."
+            "Keep this screen open. The other phone should join."
         )
 
         root.addView(status)
@@ -293,7 +293,7 @@ class MainActivity : Activity() {
         if (devices.isEmpty()) {
             root.addView(
                 text(
-                    "No paired devices found. Pair both phones in Android Bluetooth Settings first."
+                    "No paired devices found. Pair both phones in Bluetooth Settings."
                 )
             )
         }
@@ -314,10 +314,7 @@ class MainActivity : Activity() {
     private fun connect(device: BluetoothDevice) {
         page("Connecting…")
 
-        status = text(
-            "Connecting to ${device.name ?: "phone"}"
-        )
-
+        status = text("Connecting to ${device.name ?: "phone"}")
         root.addView(status)
 
         thread {
@@ -383,7 +380,6 @@ class MainActivity : Activity() {
                         receive(line)
                     }
                 }
-
             } catch (_: Exception) {
                 runOnUiThread {
                     toast("Bluetooth disconnected.")
@@ -401,11 +397,11 @@ class MainActivity : Activity() {
     }
 
     private fun showWordEntry() {
-        page("Choose your secret word")
+        page("CHOOSE YOUR SECRET WORD")
 
         root.addView(
             text(
-                "Pick ONE word. Your opponent will try to guess it.",
+                "Each player selects ONE word. Keep it secret!",
                 15f
             )
         )
@@ -414,8 +410,6 @@ class MainActivity : Activity() {
 
         wordOne = edit("Secret word (3–12 letters)")
         root.addView(wordOne)
-
-        gap(8)
 
         root.addView(button("SEND SECRET WORD") {
             val chosen = wordOne.text.toString()
@@ -428,11 +422,10 @@ class MainActivity : Activity() {
             }
 
             localWord = chosen
-
             send("WORD|$chosen")
 
             status = text(
-                "Secret word sent. Waiting for your opponent…",
+                "Word sent. Waiting for the other player…",
                 15f
             )
 
@@ -449,22 +442,25 @@ class MainActivity : Activity() {
 
         when (parts.firstOrNull()) {
 
-            "WORD" -> if (parts.size == 2) {
-                remoteWord = parts[1]
+            "WORD" -> {
+                if (parts.size == 2) {
+                    remoteWord = parts[1]
 
-                if (localWord.isNotBlank()) {
-                    startRound()
+                    if (localWord.isNotBlank()) {
+                        startRound()
+                    }
                 }
             }
 
-            "GUESS" -> if (
-                parts.size == 2 &&
-                parts[1].length == 1
-            ) {
-                applyIncomingGuess(parts[1][0])
+            "GUESS" -> {
+                if (parts.size == 2 && parts[1].length == 1) {
+                    applyIncomingGuess(parts[1][0])
+                }
             }
 
-            "WIN" -> showOpponentWinner()
+            "WIN" -> {
+                showOpponentWinner()
+            }
 
             "RESET" -> {
                 guessed.clear()
@@ -484,10 +480,7 @@ class MainActivity : Activity() {
         showBoard()
     }
 
-    private fun applyGuess(
-        c: Char,
-        transmit: Boolean
-    ) {
+    private fun applyGuess(c: Char, transmit: Boolean) {
         if (
             c !in 'A'..'Z' ||
             c in guessed ||
@@ -514,19 +507,17 @@ class MainActivity : Activity() {
         }
     }
 
+    // FIXED: Incoming guesses are checked against THIS player's secret word.
     private fun applyIncomingGuess(c: Char) {
-        if (
-            c !in 'A'..'Z' ||
-            c in guessed
-        ) return
+        if (c !in 'A'..'Z' || c in guessed) return
 
         guessed.add(c)
 
-        if (c !in remoteWord) {
+        if (c !in localWord) {
             wrong++
         }
 
-        if (remoteWord.all { it in guessed }) {
+        if (localWord.all { it in guessed }) {
             score[1 - mySide]++
             showOpponentWinner()
         } else {
@@ -536,13 +527,10 @@ class MainActivity : Activity() {
     }
 
     private fun showOpponentWinner() {
-        page("OPPONENT WINS")
+        page("OPPONENT WINS!")
 
         root.addView(
-            text(
-                "Score: ${score[0]} — ${score[1]}",
-                22f
-            )
+            text("Score: ${score[0]} — ${score[1]}", 22f)
         )
 
         root.addView(button("NEXT ROUND") {
@@ -570,11 +558,9 @@ class MainActivity : Activity() {
         root.addView(
             text(
                 "You: ${if (mySide == 0) "HOST" else "GUEST"}\n" +
-                "Score  ${score[0]} — ${score[1]}"
+                "Score: ${score[0]} — ${score[1]}"
             )
         )
-
-        gap(8)
 
         root.addView(
             text(
@@ -587,8 +573,6 @@ class MainActivity : Activity() {
             )
         )
 
-        gap(10)
-
         root.addView(
             text(
                 "OPPONENT'S SECRET WORD\n${mask(remoteWord)}",
@@ -599,11 +583,7 @@ class MainActivity : Activity() {
             }
         )
 
-        gap(8)
-
-        root.addView(
-            text("Wrong guesses: $wrong / 6")
-        )
+        root.addView(text("Wrong guesses: $wrong / 6"))
 
         keyboard = GridLayout(this).apply {
             columnCount = 7
@@ -633,18 +613,17 @@ class MainActivity : Activity() {
 
         root.addView(keyboard)
 
-        gap(12)
-
         root.addView(button("DISCONNECT / HOME") {
             closeConnection()
             buildHome()
         })
     }
 
-    private fun mask(word: String): String =
-        word.map {
+    private fun mask(word: String): String {
+        return word.map {
             if (it in guessed) it else '_'
         }.joinToString(" ")
+    }
 
     private fun showWinner() {
         page("YOU WIN!")
@@ -662,7 +641,6 @@ class MainActivity : Activity() {
             wrong = 0
             turn = 0
             round++
-
             send("RESET")
             showBoard()
         })
